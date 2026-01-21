@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_ouvrage" model="ir.ui.view">
+        <field name="name">sale.order.form.ouvrage</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="before">
+                <!-- Collapse/Expand button could go here if implemented -->
+                <field name="is_ouvrage" invisible="1"/>
+                <field name="ouvrage_parent_line_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/tree/field[@name='name']" position="after">
+                <button name="action_configure_ouvrage" type="object" icon="fa-plus" 
+                        invisible="not is_ouvrage" title="Configurer l'Ouvrage"/>
+            </xpath>
+            <!-- Add Ouvrage specific columns -->
+             <!-- Note: Cost and Margin might available if sale_margin is installed. 
+                  We assume standard fields or add ours. -->
+        </field>
+    </record>
+</odoo>
