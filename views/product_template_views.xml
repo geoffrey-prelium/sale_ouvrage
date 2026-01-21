@@ -14,7 +14,7 @@
             <xpath expr="//label[@for='list_price']" position="attributes">
                 <attribute name="invisible">is_ouvrage == True</attribute>
             </xpath>
-            <xpath expr="//div[@name='pricing']" position="attributes">
+            <xpath expr="//field[@name='list_price']" position="attributes">
                 <attribute name="invisible">is_ouvrage == True</attribute>
             </xpath>
              <!-- Ensure UoM is visible even if pricing is hidden. 

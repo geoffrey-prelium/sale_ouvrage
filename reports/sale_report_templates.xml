@@ -5,17 +5,17 @@
             <attribute name="t-foreach">lines_to_report.filtered(lambda l: not l.ouvrage_parent_line_id or not l.ouvrage_parent_line_id.hide_structure)</attribute>
         </xpath>
         
-        <xpath expr="//td[@name='td_priceunit']" position="attributes">
+        <xpath expr="//td[@name='td_product_priceunit']" position="attributes">
              <attribute name="t-if">not line.ouvrage_parent_line_id or not line.ouvrage_parent_line_id.hide_prices</attribute>
         </xpath>
         <!-- Need to handle other columns similarly or generic rule? -->
         <!-- Logic: If line has parent with hide_prices, hide Price/Subtotal columns for THIS line -->
-         <xpath expr="//td[@name='td_subtotal']" position="attributes">
+         <xpath expr="//td[@name='td_product_subtotal']" position="attributes">
              <attribute name="t-if">not line.ouvrage_parent_line_id or not line.ouvrage_parent_line_id.hide_prices</attribute>
         </xpath>
         
         <!-- Indentation or Section style for Ouvrage -->
-        <xpath expr="//td[@name='td_name']" position="inside">
+        <xpath expr="//td[@name='td_product_name']" position="inside">
             <t t-if="line.is_ouvrage">
                 <strong>(Ouvrage)</strong>
             </t>
