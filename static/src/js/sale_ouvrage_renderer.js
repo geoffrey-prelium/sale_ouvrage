@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { patch } from "@web/core/utils/patch";
-import { SaleOrderLineListRenderer } from "@sale/static/src/js/sale_order_line_field/sale_order_line_field";
+import { SaleOrderLineListRenderer } from "@sale/js/sale_order_line_field/sale_order_line_field";
 import { useSubEnv, useState } from "@odoo/owl";
 
 patch(SaleOrderLineListRenderer.prototype, {
