@@ -3,16 +3,13 @@
     <t t-name="sale_ouvrage.ListRenderer.RecordRow" t-inherit="sale.ListRenderer.RecordRow" t-inherit-mode="extension">
         <xpath expr="//td[hasclass('o_data_cell')]" position="inside">
             <t t-if="column.name == 'product_id'">
-                <!-- DEBUG SPAN -->
-                <span class="o_ouvrage_toggle me-1 order-first" style="cursor: pointer; margin-right: 5px;" t-on-click.stop="() => this.toggleOuvrage(record.resId)">
-                    <t t-if="record.data.is_ouvrage">
-                         <i t-if="!this.ouvrageState.expandedOuvrages.has(record.resId)" class="fa fa-caret-right"/>
-                         <i t-if="this.ouvrageState.expandedOuvrages.has(record.resId)" class="fa fa-caret-down"/>
-                    </t>
-                    <t t-else="">
-                        <span class="text-muted" style="font-size:0.8em; opacity:0.5;">(Not Ouvrage)</span>
-                    </t>
-                </span>
+                <t t-if="record.data.is_ouvrage">
+                    <!-- Icon Container to ensure left alignment if needed, or inline -->
+                    <span class="o_ouvrage_toggle me-1 order-first" style="cursor: pointer; margin-right: 5px;" t-on-click.stop="() => this.toggleOuvrage(record.resId)">
+                        <i t-if="!this.ouvrageState.expandedOuvrages.has(record.resId)" class="fa fa-caret-right"/>
+                        <i t-if="this.ouvrageState.expandedOuvrages.has(record.resId)" class="fa fa-caret-down"/>
+                    </span>
+                </t>
             </t>
         </xpath>
     </t>

@@ -128,8 +128,5 @@ class SaleOrderLine(models.Model):
             }
             lines_values.append(vals)
 
-        # DEBUG LOGGING
-        print(f"DEBUG: Exploding Ouvrage {self.name} (ID: {self.id})")
         for val in lines_values:
-            print(f"DEBUG: Creating component with Parent ID: {val.get('ouvrage_parent_line_id')}")
             self.env['sale.order.line'].create(val)

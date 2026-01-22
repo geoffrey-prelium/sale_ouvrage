@@ -29,9 +29,6 @@ patch(SaleOrderLineListRenderer.prototype, {
             // Handle both [id, name] and id (though usually array in m2o)
             const parentId = Array.isArray(parentField) ? parentField[0] : parentField;
 
-            // Debug LOG
-            console.log(`[OuvrageRenderer] Row ${record.data.product_id[1]}: parentId=${parentId}, is_ouvrage=${record.data.is_ouvrage}`);
-
             // If it has a parent, it is a component
             if (parentId) {
                 // If the parent is NOT in the expanded set, hide this row

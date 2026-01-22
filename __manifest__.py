@@ -1,6 +1,7 @@
 {
     'name': 'Sale Ouvrage (Construction Works)',
     'version': '1.2',
+    'author': 'Prelium',
     'category': 'Sales',
     'summary': 'Manage Construction Works (Ouvrages) in Sales',
     'description': """
