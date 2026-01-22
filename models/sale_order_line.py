@@ -46,6 +46,7 @@ class SaleOrderLine(models.Model):
                 self.bom_id = bom.id
                 self.hide_prices = bom.hide_prices
                 self.hide_structure = bom.hide_structure
+                self.price_unit = 0.0
 
     def action_configure_ouvrage(self):
         self.ensure_one()
@@ -60,39 +61,6 @@ class SaleOrderLine(models.Model):
                 'default_qty': self.product_uom_qty,
             }
         }
-
-    def _explode_ouvrage(self):
-        """
-        Creates component lines from the BoM using the current Ouvrage Quantity.
-        Does NOT remove existing lines.
-        """
-        self.ensure_one()
-        if not self.is_ouvrage or not self.bom_id:
-            return
-
-        lines_values = []
-        factor = self.product_uom_qty or 1.0
-        
-        # Using standard mrp.bom.explode logic or manual?
-        # Manual is safer for custom Sale Order Line creation
-        for bom_line in self.bom_id.bom_line_ids:
-            qty = bom_line.product_qty * factor
-            vals = {
-                'order_id': self.order_id.id,
-                'product_id': bom_line.product_id.id,
-                'product_uom_qty': qty,
-                'product_uom': bom_line.product_uom_id.id,
-                'ouvrage_parent_line_id': self.id,
-                'sequence': self.sequence + 1, # Add right after
-                # Price/Cost logic will be handled by standard onchange or computed
-            }
-            lines_values.append(vals)
-
-        # Create lines
-        # We use strict creation to avoid triggering too many onchanges implicitly
-        # calling create on sale.order.line automatically triggers some logic
-        for val in lines_values:
-            self.env['sale.order.line'].create(val)
 
     def write(self, values):
         # Handle Scaling
@@ -112,8 +80,56 @@ class SaleOrderLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # 1. Ensure BoM is found for Ouvrage lines if not set
+        for vals in vals_list:
+            if vals.get('product_id'):
+                product = self.env['product.product'].browse(vals['product_id'])
+                if product.is_ouvrage and not vals.get('bom_id'):
+                    bom = self.env['mrp.bom'].search([('product_tmpl_id', '=', product.product_tmpl_id.id)], limit=1)
+                    if bom:
+                        vals['bom_id'] = bom.id
+                        vals['hide_prices'] = bom.hide_prices
+                        vals['hide_structure'] = bom.hide_structure
+                        vals['price_unit'] = 0.0 # Force 0 price for Ouvrage
+
         lines = super().create(vals_list)
+        
+        # 2. Explode
         for line in lines:
             if line.is_ouvrage and line.bom_id:
                 line._explode_ouvrage()
+                
         return lines
+
+    def _explode_ouvrage(self):
+        """
+        Creates component lines from the BoM using the current Ouvrage Quantity.
+        Does NOT remove existing lines.
+        """
+        self.ensure_one()
+        if not self.is_ouvrage or not self.bom_id:
+            return
+
+        lines_values = []
+        factor = self.product_uom_qty or 1.0
+        
+        for bom_line in self.bom_id.bom_line_ids:
+            qty = bom_line.product_qty * factor
+            name_indented = f"    > {bom_line.product_id.display_name}"
+            
+            vals = {
+                'order_id': self.order_id.id,
+                'product_id': bom_line.product_id.id,
+                'name': name_indented, # Visual Indentation
+                'product_uom_qty': qty,
+                'product_uom_id': bom_line.product_uom_id.id,
+                'ouvrage_parent_line_id': self.id,
+                'sequence': self.sequence + 1, 
+            }
+            lines_values.append(vals)
+
+        # DEBUG LOGGING
+        print(f"DEBUG: Exploding Ouvrage {self.name} (ID: {self.id})")
+        for val in lines_values:
+            print(f"DEBUG: Creating component with Parent ID: {val.get('ouvrage_parent_line_id')}")
+            self.env['sale.order.line'].create(val)

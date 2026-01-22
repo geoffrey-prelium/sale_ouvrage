@@ -30,6 +30,7 @@ class OuvrageConfigurator(models.TransientModel):
                     'quantity': child.product_uom_qty,
                     'price_unit': child.price_unit,
                     'cost': child.purchase_price,
+                    'discount': child.discount,
                 }))
             
             res.update({
@@ -57,6 +58,7 @@ class OuvrageConfigurator(models.TransientModel):
                     'quantity': bom_line.product_qty * factor,
                     'price_unit': bom_line.product_id.list_price, # or standard calculation
                     'cost': bom_line.product_id.standard_price,
+                    'discount': 0.0,
                 }))
              self.component_ids = [(5, 0, 0)] + lines # Clear and add
 
@@ -89,6 +91,7 @@ class OuvrageConfigurator(models.TransientModel):
                 'product_uom_qty': comp.quantity,
                 'price_unit': comp.price_unit,
                 'purchase_price': comp.cost,
+                'discount': comp.discount,
                 'ouvrage_parent_line_id': line.id,
                 'sequence': line.sequence + 1,
             })
@@ -107,4 +110,17 @@ class OuvrageComponent(models.TransientModel):
     quantity = fields.Float(string="Quantité", default=1.0)
     price_unit = fields.Float(string="Prix Unitaire")
     cost = fields.Float(string="Coût")
-    # ... other fields
+    discount = fields.Float(string="Remise (%)")
+    
+    margin = fields.Float(string="Marge", compute='_compute_margin')
+    margin_percent = fields.Float(string="Marge %", compute='_compute_margin')
+
+    @api.depends('price_unit', 'cost', 'quantity', 'discount')
+    def _compute_margin(self):
+        for line in self:
+            price_effective = line.price_unit * (1 - (line.discount or 0.0) / 100.0)
+            line.margin = (price_effective - line.cost) * line.quantity
+            if price_effective:
+                line.margin_percent = (price_effective - line.cost) / price_effective
+            else:
+                line.margin_percent = 0.0
