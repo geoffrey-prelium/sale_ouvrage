@@ -15,8 +15,14 @@
                         invisible="not is_ouvrage" title="Configurer l'Ouvrage"/>
             </xpath>
             <!-- Add Ouvrage specific columns -->
-             <!-- Note: Cost and Margin might available if sale_margin is installed. 
-                  We assume standard fields or add ours. -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']" position="attributes">
+                <attribute name="readonly">is_ouvrage == True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']" position="after">
+                <field name="purchase_price" optional="show" string="Coût"/>
+                <field name="ouvrage_margin" optional="show"/>
+                <field name="ouvrage_margin_pct" widget="percentage" optional="show"/>
+            </xpath>
         </field>
     </record>
 </odoo>

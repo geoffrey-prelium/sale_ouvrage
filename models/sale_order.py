@@ -12,6 +12,55 @@ class SaleOrder(models.Model):
         
         return super().action_confirm()
 
+    @api.depends('order_line.price_subtotal', 'currency_id', 'company_id', 'payment_term_id')
+    def _compute_amounts(self):
+        """
+        Override to exclude Ouvrage lines from the total amount.
+        We only want them to display a price locally but not impact the order total.
+        """
+        AccountTax = self.env['account.tax']
+        for order in self:
+            # Filter out Ouvrage lines from the total calculation
+            order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.is_ouvrage)
+            
+            base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
+            base_lines += order._add_base_lines_for_early_payment_discount()
+            
+            AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
+            AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
+            
+            tax_totals = AccountTax._get_tax_totals_summary(
+                base_lines=base_lines,
+                currency=order.currency_id or order.company_id.currency_id,
+                company=order.company_id,
+            )
+            order.amount_untaxed = tax_totals['base_amount_currency']
+            order.amount_tax = tax_totals['tax_amount_currency']
+            order.amount_total = tax_totals['total_amount_currency']
+
+    @api.depends('order_line.price_subtotal', 'currency_id', 'company_id', 'payment_term_id')
+    def _compute_tax_totals(self):
+        """
+        Override to exclude Ouvrage lines from the tax totals computation.
+        This fixes the display in the portal and reports.
+        """
+        AccountTax = self.env['account.tax']
+        for order in self:
+            # Filter out Ouvrage lines
+            order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.is_ouvrage)
+            
+            base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
+            base_lines += order._add_base_lines_for_early_payment_discount()
+            
+            AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
+            AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
+            
+            order.tax_totals = AccountTax._get_tax_totals_summary(
+                base_lines=base_lines,
+                currency=order.currency_id or order.company_id.currency_id,
+                company=order.company_id,
+            )
+
     def _check_and_create_specific_bom(self, line):
         """
         Check if the current components roughly match the BoM structure.
@@ -24,13 +73,10 @@ class SaleOrder(models.Model):
         bom = line.bom_id
         
         # Simple check: Count of lines vs BoM lines
-        # This is basic. A better check is component-by-component matching.
-        # But if user added/removed components, counts differ.
         if len(line.ouvrage_line_ids) != len(bom.bom_line_ids):
             is_modified = True
         else:
             # Check quantities ratio
-            # Map product_id to ratio
             bom_ratios = {}
             for bl in bom.bom_line_ids:
                 bom_ratios[bl.product_id.id] = bl.product_qty / (bom.product_qty or 1.0)
@@ -47,11 +93,15 @@ class SaleOrder(models.Model):
         
         if is_modified:
             # Create new BoM
-            new_code = f"{line.order_id.name} - {line.order_id.date_order} - {line.order_id.partner_id.name}"
+            # Naming format: Order Name + Date + Customer
+            date_str = line.order_id.date_order.strftime('%Y-%m-%d') if line.order_id.date_order else ''
+            new_code = f"{line.order_id.name} - {date_str} - {line.order_id.partner_id.name}"
+            
             new_bom = bom.copy({
                 'code': new_code,
                 'product_tmpl_id': line.product_id.product_tmpl_id.id,
                 'bom_line_ids': False, # Clean lines to recreate them
+                'sequence': 9999, # Push to bottom as requested
             })
             
             # Create new lines
@@ -59,9 +109,7 @@ class SaleOrder(models.Model):
             for child in line.ouvrage_line_ids:
                 new_bom_lines.append((0, 0, {
                     'product_id': child.product_id.id,
-                    'product_qty': child.product_uom_qty / (line.product_uom_qty or 1.0), # Normalized to 1 unit of Ouvrage? 
-                    # WAIT: If bom.product_qty is 1. If not, we should adjust.
-                    # Assuming bom.product_qty of new bom is 1.0 (default copy).
+                    'product_qty': child.product_uom_qty / (line.product_uom_qty or 1.0),
                     'product_uom_id': child.product_uom.id,
                 }))
             

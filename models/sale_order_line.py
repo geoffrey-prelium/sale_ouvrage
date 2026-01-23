@@ -46,7 +46,12 @@ class SaleOrderLine(models.Model):
                 self.bom_id = bom.id
                 self.hide_prices = bom.hide_prices
                 self.hide_structure = bom.hide_structure
-                self.price_unit = 0.0
+                
+                # Calculate initial price from BoM
+                price = 0.0
+                for bom_line in bom.bom_line_ids:
+                    price += bom_line.product_id.list_price * bom_line.product_qty
+                self.price_unit = price
 
     def action_configure_ouvrage(self):
         self.ensure_one()
@@ -71,12 +76,28 @@ class SaleOrderLine(models.Model):
                 ratio = new_qty / old_qty
                 # Scale components
                 for child in self.ouvrage_line_ids:
-                    # We only update quantity, let Price Unit be handled by standard logic if needed?
-                    # User says: "Je n'actualise pas les autres champs... Seuls les totaux HT doivent se recalculer"
                     new_child_qty = child.product_uom_qty * ratio
                     child.write({'product_uom_qty': new_child_qty})
         
-        return super().write(values)
+        res = super().write(values)
+        
+        # Trigger price recompute if components changed
+        # This is a fallback if onchanges didn't catch it
+        if self.is_ouvrage and not self.env.context.get('skip_ouvrage_price_update'):
+             self._recompute_ouvrage_price()
+             
+        return res
+
+    def _recompute_ouvrage_price(self):
+        for line in self:
+            if not line.ouvrage_line_ids:
+                continue
+            total_price = sum(child.price_subtotal for child in line.ouvrage_line_ids)
+            # price_unit should be total / line.qty
+            if line.product_uom_qty:
+                new_unit_price = total_price / line.product_uom_qty
+                if abs(line.price_unit - new_unit_price) > 0.01:
+                    line.with_context(skip_ouvrage_price_update=True).write({'price_unit': new_unit_price})
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -90,7 +111,12 @@ class SaleOrderLine(models.Model):
                         vals['bom_id'] = bom.id
                         vals['hide_prices'] = bom.hide_prices
                         vals['hide_structure'] = bom.hide_structure
-                        vals['price_unit'] = 0.0 # Force 0 price for Ouvrage
+                        # Calculate price from BoM if not set
+                        if 'price_unit' not in vals:
+                            price = 0.0
+                            for bom_line in bom.bom_line_ids:
+                                price += bom_line.product_id.list_price * bom_line.product_qty
+                            vals['price_unit'] = price
 
         lines = super().create(vals_list)
         
