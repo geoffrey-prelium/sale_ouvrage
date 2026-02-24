@@ -110,7 +110,7 @@ class SaleOrder(models.Model):
                 new_bom_lines.append((0, 0, {
                     'product_id': child.product_id.id,
                     'product_qty': child.product_uom_qty / (line.product_uom_qty or 1.0),
-                    'product_uom_id': child.product_uom.id,
+                    'product_uom_id': child.product_uom.id if hasattr(child, 'product_uom') else child.product_uom_id.id if hasattr(child, 'product_uom_id') else False,
                 }))
             
             new_bom.write({'bom_line_ids': new_bom_lines})
