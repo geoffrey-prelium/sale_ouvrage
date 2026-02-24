@@ -13,18 +13,21 @@ class TestSaleOuvrage(TransactionCase):
         # Create Products
         self.product_ouvrage = self.Product.create({
             'name': 'Ouvrage A',
-            'type': 'product',
+            'type': 'consu',
+            'is_storable': True,
             'is_ouvrage': True,
             'list_price': 100.0,
         })
         self.component_b = self.Product.create({
             'name': 'Component B',
-            'type': 'product',
+            'type': 'consu',
+            'is_storable': True,
             'list_price': 10.0,
         })
         self.component_c = self.Product.create({
             'name': 'Component C',
-            'type': 'product',
+            'type': 'consu',
+            'is_storable': True,
             'list_price': 20.0,
         })
 
